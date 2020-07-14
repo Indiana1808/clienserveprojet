@@ -1,55 +1,106 @@
+#include<signal.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <stdio.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <string.h>
-#define PORT 4000
-char *strrev(char *str){
-   char *p1, *p2;
-   if (! str || ! *str)
-      return str;
-   for (p1 = str, p2 = str + strlen(str) - 1; p2 > p1; ++p1, --p2){
-      *p1 ^= *p2;
-      *p2 ^= *p1;
-      *p1 ^= *p2;
-   }
-   return str;
-}
-main() {
-   int server_fd, new_socket, valread;
-   struct sockaddr_in address;
-   char str[100];
-   int addrlen = sizeof(address);
-   char buffer[1024] = { 0 };
-   int i, j, temp;
-   int l;
-   char* message = "bonjour"; 
-   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-      perror("Socket connection failed");
-      exit(EXIT_FAILURE);
-   }
-   address.sin_family = AF_INET;
-   address.sin_addr.s_addr = INADDR_ANY;
-   address.sin_port = htons(PORT);
-   if (bind(server_fd, (struct sockaddr*)&address, sizeof(address)) < 0) { 
-      perror("Unable to bind with the socket 4000");
-      exit(EXIT_FAILURE);
-   }
-   if (listen(server_fd, 3) < 0) {
-      perror("Listning.....");
-      exit(EXIT_FAILURE);
-   }
-   if ((new_socket = accept(server_fd, (struct sockaddr*)&address,(socklen_t*)&addrlen)) < 0) {
-      perror("Accept");
-      exit(EXIT_FAILURE);
-   }
-  
-   valread = read(new_socket, str, sizeof(str));
-   l = strlen(str);
-   printf("\n message client :%s\n", str);
-   strrev(str); //reverse the string
-   send(new_socket, str, sizeof(str), 0);
-   printf("\nrecevoir et envoyer \n");
-}
+ 
+int main()
+{
+    //structure donnant les informations sur le serveur et sur le client
+    struct sockaddr_in information_server;
+    struct sockaddr_in information_client;
+ 
+    int socketID = socket(AF_INET, SOCK_STREAM, 0);
+    int connexion = 0;
+    int pid;
+    int id;
+    char msg[255];
+ 
+    id=0;
+    socklen_t len = sizeof(struct sockaddr_in); //déclaration d' une variable du type socklen_t qui contiendra la taille de la structure
+ 
+    if (socketID == -1)
+    {
+        perror("socket");
+        exit(-1);
+    }
+ 
+    /*initialisation du protocole, TCP  l'adresse de connection 127.0.0.1 (en local) et du port du serveur (1400)*/
+    memset(&information_server, 0, sizeof(struct sockaddr_in));
+    information_server.sin_port = htons(2500);
+    information_server.sin_family = AF_INET;
+ 
+    /* création de la connexion*/
+    if ((bind(socketID, (struct sockaddr *) &information_server, sizeof(struct sockaddr))) == -1)
+    {
+        perror("bind");
+        exit(-1);
+    }
+ 
+    /* le serveur écoute si un client cherche à se connecter*/
+    if ((listen(socketID, 5)) == -1)
+    {
+        perror("listen");
+        exit (-1);
+    }
+    while (1)
+    {
+ 
+        memset(&information_client, 0, sizeof(struct sockaddr_in));
+        connexion = accept(socketID, (struct sockaddr *) &information_client, &len); //le serveur accepte la connexion
+ 
+        if (connexion == -1)
+        {
+            perror("accept");
+            exit(-1);
+        }
+        id+=1;
+        /* Create child process */
+        pid = fork();
+ 
+        if (pid < 0)
+        {
+            perror("ERROR on fork");
+            exit(1);
+        }
+        if (pid == 0)
+        {
+            /* This is the client process */
+            close(socketID);
+            printf ("Connexion acceptée de : client %i\n",id);
+            memset(msg, 0, 255);
+            sprintf(msg,"bienvenu! client %i",id);
+            send(connexion, msg, strlen(msg), 0);
+            do
+            {
+                memset(msg, 0, 255);
+                recv(connexion, msg, 255, 0);
+ 
+                if (strcmp(msg, "aurevoir") == 0)    //si le client ecrit aurevoir il est deconnecté du chat
+                {
+                    printf ("Connexion fermée pour le client %i\n",id);
+                    shutdown(socketID, SHUT_RDWR);
+                    exit (0);
+                }
+ 
+                printf ("client %d : %s\n",id,msg);
+                printf ("Réponse : ");
+                fgets(msg, 255, stdin);
+                msg[strlen(msg) - 1] = '\0';
+                send(connexion, msg, strlen(msg), 0);
+ 
+            }
+            while(1);
+        }
+        else
+        {
+            close(connexion);
+ 
+        }
+ 
+    }
+    return 0;
+ 
+} 
