@@ -36,7 +36,7 @@
  
 # programme 5 : Mettre a jour et message commit ( après l'execution ) 
  mettre a jours pour que le travail est enregistrer dans le github 
-  - on va donner la permission, commande on fait, git status(on voit que c'est encore en rouge) 
+  - on donne la permission, commande on fait, git status(on voit que c'est encore en rouge) 
   - ensuite git add .
   - on retourne a la git status (la couleur a changer en vert)
   - on donne de message la commande git commit -m "message"(v.0)
